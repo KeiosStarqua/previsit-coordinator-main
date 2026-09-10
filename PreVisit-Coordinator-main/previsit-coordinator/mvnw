@@ -1,0 +1,31 @@
+#!/bin/sh
+# ----------------------------------------------------------------------------
+# Minimal Maven Wrapper for macOS/Linux (self-contained, no Maven install).
+# Downloads Apache Maven into ~/.m2/wrapper on first run and reuses it after.
+# Requires a JDK on PATH (this project needs JDK 25).
+# Usage:  ./mvnw spring-boot:run
+# ----------------------------------------------------------------------------
+set -e
+MVN_VERSION="3.9.9"
+WRAPPER_HOME="$HOME/.m2/wrapper"
+MVN_HOME="$WRAPPER_HOME/apache-maven-$MVN_VERSION"
+MVN_CMD="$MVN_HOME/bin/mvn"
+DIST_URL="https://archive.apache.org/dist/maven/maven-3/$MVN_VERSION/binaries/apache-maven-$MVN_VERSION-bin.zip"
+ZIP="${TMPDIR:-/tmp}/apache-maven-$MVN_VERSION-bin.zip"
+
+if [ ! -x "$MVN_CMD" ]; then
+  echo "[mvnw] Apache Maven $MVN_VERSION not found. Downloading it once..."
+  mkdir -p "$WRAPPER_HOME"
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL "$DIST_URL" -o "$ZIP"
+  elif command -v wget >/dev/null 2>&1; then
+    wget -q "$DIST_URL" -O "$ZIP"
+  else
+    echo "[mvnw] Need curl or wget to download Maven." >&2; exit 1
+  fi
+  echo "[mvnw] Extracting..."
+  unzip -q -o "$ZIP" -d "$WRAPPER_HOME"
+  chmod +x "$MVN_CMD"
+fi
+
+exec "$MVN_CMD" "$@"
