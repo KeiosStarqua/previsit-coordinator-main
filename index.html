@@ -1,0 +1,1707 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PreVisit Call-E Coordinator — Demo</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" defer></script>
+<style>
+  :root {
+    --bg: #eaeef7;
+    --bg2: #dfe7f5;
+    --surface: rgba(255,255,255,.72);
+    --surface-solid: #ffffff;
+    --surface-2: rgba(248,250,252,.75);
+    --border: rgba(148,163,184,.35);
+    --border-strong: rgba(100,116,139,.4);
+    --text: #0f172a;
+    --muted: #55617a;
+    --primary: #1d68d6;
+    --primary-hover: #1552af;
+    --primary-soft: rgba(29,104,214,.12);
+    --ok: #0f9d58;
+    --ok-soft: rgba(15,157,88,.14);
+    --warn: #b45309;
+    --warn-soft: rgba(180,83,9,.14);
+    --danger: #c0392b;
+    --danger-soft: rgba(192,57,43,.14);
+    --focus: #2563eb;
+    --radius: 16px;
+    --glass-blur: blur(16px) saturate(150%);
+    --shadow: 0 1px 2px rgba(15,23,42,.06), 0 18px 40px -18px rgba(15,23,42,.35);
+    --shadow-lift: 0 30px 60px -22px rgba(15,23,42,.5);
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --scene-a: 29,104,214;
+    --scene-b: 106,162,255;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #070c18; --bg2: #0b1428; --surface: rgba(18,26,43,.66); --surface-solid: #121a2b;
+      --surface-2: rgba(15,22,38,.7); --border: rgba(90,110,150,.28); --border-strong: rgba(120,140,180,.4);
+      --text: #e7edf7; --muted: #9fb0cc; --primary: #4c8dff; --primary-hover: #6ba1ff;
+      --primary-soft: rgba(76,141,255,.18); --ok: #34d399; --ok-soft: rgba(52,211,153,.16); --warn: #f0b45e;
+      --warn-soft: rgba(240,180,94,.16); --danger: #f87171; --danger-soft: rgba(248,113,113,.16); --focus: #6ba1ff;
+      --shadow: 0 1px 2px rgba(0,0,0,.5), 0 18px 40px -18px rgba(0,0,0,.75);
+      --shadow-lift: 0 34px 70px -22px rgba(0,0,0,.85);
+      --scene-a: 76,141,255; --scene-b: 130,180,255;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #070c18; --bg2: #0b1428; --surface: rgba(18,26,43,.66); --surface-solid: #121a2b;
+    --surface-2: rgba(15,22,38,.7); --border: rgba(90,110,150,.28); --border-strong: rgba(120,140,180,.4);
+    --text: #e7edf7; --muted: #9fb0cc; --primary: #4c8dff; --primary-hover: #6ba1ff;
+    --primary-soft: rgba(76,141,255,.18); --ok: #34d399; --ok-soft: rgba(52,211,153,.16); --warn: #f0b45e;
+    --warn-soft: rgba(240,180,94,.16); --danger: #f87171; --danger-soft: rgba(248,113,113,.16); --focus: #6ba1ff;
+    --shadow: 0 1px 2px rgba(0,0,0,.5), 0 18px 40px -18px rgba(0,0,0,.75);
+    --shadow-lift: 0 34px 70px -22px rgba(0,0,0,.85);
+    --scene-a: 76,141,255; --scene-b: 130,180,255;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.5;
+    background: radial-gradient(1200px 800px at 15% -10%, var(--bg2), var(--bg) 60%); min-height: 100%; }
+  a { color: var(--primary); }
+  h1,h2,h3 { margin: 0; font-weight: 650; letter-spacing: -.01em; }
+
+  /* 3D backdrop canvas */
+  #bg3d { position: fixed; inset: 0; z-index: 0; display: block; width: 100%; height: 100%; pointer-events: none; }
+  .scrim { position: fixed; inset: 0; z-index: 1; pointer-events: none;
+    background: radial-gradient(900px 600px at 80% 110%, rgba(var(--scene-b),.10), transparent 70%); }
+  header.appbar, .layout, .disclaimer { position: relative; z-index: 2; }
+
+  /* App bar */
+  header.appbar {
+    display: flex; align-items: center; gap: 14px; padding: 14px 22px;
+    background: var(--surface); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+    border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 20;
+  }
+  .brand { display: flex; align-items: center; gap: 11px; perspective: 500px; }
+  .logo { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--primary), #6aa2ff);
+    display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 16px;
+    box-shadow: 0 8px 20px -6px rgba(var(--scene-a),.7); animation: logospin 12s linear infinite; transform-style: preserve-3d; }
+  @keyframes logospin { 0%{transform: rotateY(0)} 100%{transform: rotateY(360deg)} }
+  .brand .title { font-size: 15px; font-weight: 700; }
+  .brand .sub { font-size: 11.5px; color: var(--muted); }
+  .appbar .spacer { flex: 1; }
+  .health { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: #cbd5e1; }
+  .dot.ok { background: var(--ok); box-shadow: 0 0 0 3px var(--ok-soft); }
+  .dot.down { background: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
+  .icon-btn { background: var(--surface-2); border: 1px solid var(--border); color: var(--text); border-radius: 9px;
+    width: 36px; height: 36px; cursor: pointer; font-size: 15px; backdrop-filter: var(--glass-blur); }
+  .icon-btn:hover { background: var(--primary-soft); }
+
+  .filebanner { position: relative; z-index: 2; display: flex; gap: 11px; align-items: flex-start;
+    max-width: 1340px; margin: 16px auto -6px; padding: 12px 15px; border-radius: 12px;
+    background: var(--warn-soft); color: var(--warn); border: 1px solid var(--warn); font-size: 12.5px; }
+  .filebanner code { background: rgba(0,0,0,.08); padding: 1px 5px; border-radius: 5px; font-size: 11.5px; }
+  .filebanner .icon-btn { margin-left: auto; width: 28px; height: 28px; font-size: 12px; flex: none; }
+
+  .layout { display: grid; grid-template-columns: 348px 1fr; gap: 22px; padding: 22px; max-width: 1340px; margin: 0 auto;
+    align-items: start; perspective: 1600px; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+  /* bento-02 inspired lobby overview */
+  .bento { position: relative; z-index: 2; display: grid; gap: 14px; padding: 22px 22px 0;
+    max-width: 1340px; margin: 0 auto;
+    grid-template-columns: 1.6fr 1fr 1fr 1.2fr; }
+  @media (max-width: 900px) { .bento { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 560px) { .bento { grid-template-columns: 1fr; } }
+  .bento-tile { background: var(--surface); backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px 20px;
+    position: relative; overflow: hidden; transition: transform .18s, box-shadow .18s; }
+  .bento-tile:hover { transform: translateY(-3px); box-shadow: var(--shadow-lift); }
+  .bt-label { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--muted); font-weight: 700; }
+  .bt-metric { font-size: 34px; font-weight: 800; letter-spacing: -.02em; margin: 6px 0 4px;
+    background: linear-gradient(135deg, var(--primary), #6aa2ff); -webkit-background-clip: text;
+    background-clip: text; -webkit-text-fill-color: transparent; }
+  .bt-metric.small { font-size: 18px; -webkit-text-fill-color: initial; background: none;
+    color: var(--text); margin-top: 10px; }
+  .bt-note { font-size: 11.5px; color: var(--muted); line-height: 1.45; }
+  .bento-tile.hotline { background: linear-gradient(135deg, var(--primary), #4f8ff0); color: #fff;
+    border-color: transparent; }
+  .bento-tile.hotline .bt-label { color: rgba(255,255,255,.85); }
+  .bento-tile.hotline .bt-note { color: rgba(255,255,255,.82); }
+  .bt-hotline { display: block; font-size: 27px; font-weight: 800; letter-spacing: -.01em;
+    margin: 6px 0 5px; color: #fff; text-decoration: none; }
+  .bt-hotline:hover { text-decoration: underline; }
+
+  /* Glass cards with 3D depth */
+  .card, .panel {
+    background: var(--surface); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow);
+    transform-style: preserve-3d; transition: transform .18s ease, box-shadow .25s ease, border-color .25s ease;
+    will-change: transform;
+  }
+  .card { position: relative; overflow: hidden; }
+  .card::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.6), transparent); opacity: .5; }
+  .card + .card { margin-top: 18px; }
+  .tilt:hover { box-shadow: var(--shadow-lift); border-color: var(--border-strong); }
+  .card-h { padding: 15px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 9px; }
+  .card-h h2 { font-size: 13.5px; }
+  .card-h .count { margin-left: auto; font-size: 11.5px; color: var(--muted); background: var(--surface-2);
+    border: 1px solid var(--border); padding: 1px 9px; border-radius: 20px; }
+  .card-b { padding: 17px 18px; }
+  .float-in { animation: floatIn .5s cubic-bezier(.2,.7,.3,1) both; }
+  @keyframes floatIn { from { opacity: 0; transform: translateY(14px) translateZ(-40px); } to { opacity: 1; transform: none; } }
+
+  /* Forms */
+  label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 5px; }
+  input[type=text], input[type=tel], input[type=email], input[type=password], input[type=number], select, textarea {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: 10px;
+    background: var(--surface-2); color: var(--text); font: inherit; font-size: 13.5px; backdrop-filter: blur(4px);
+  }
+  textarea { resize: vertical; min-height: 66px; }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--focus); outline-offset: 1px; border-color: var(--focus); }
+  .field { margin-bottom: 13px; }
+  .check { display: flex; align-items: center; gap: 9px; margin-bottom: 11px; }
+  .check input { width: 17px; height: 17px; accent-color: var(--primary); }
+  .check label { margin: 0; font-weight: 500; color: var(--text); font-size: 13px; }
+  .hint { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; position: relative;
+    padding: 10px 16px; border-radius: 11px; border: 1px solid var(--border-strong); font: inherit; font-weight: 600;
+    font-size: 13px; cursor: pointer; background: var(--surface-2); color: var(--text);
+    transition: transform .12s ease, box-shadow .2s ease, background .2s ease; transform-style: preserve-3d; }
+  .btn:hover:not(:disabled) { transform: translateY(-2px) translateZ(6px); box-shadow: 0 10px 22px -10px rgba(15,23,42,.5); }
+  .btn:active:not(:disabled) { transform: translateY(0) translateZ(0); }
+  .btn.primary { background: linear-gradient(135deg, var(--primary), #4f8ff0); color: #fff; border-color: transparent;
+    box-shadow: 0 10px 24px -10px rgba(var(--scene-a),.8); }
+  .btn.primary:hover:not(:disabled) { box-shadow: 0 16px 30px -10px rgba(var(--scene-a),.9); }
+  .btn.ok { background: linear-gradient(135deg, var(--ok), #2fbd76); color: #fff; border-color: transparent;
+    box-shadow: 0 10px 24px -10px rgba(15,157,88,.8); }
+  .btn.block { width: 100%; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn.sm { padding: 6px 12px; font-size: 12px; border-radius: 9px; }
+  .btn.sm.danger { color: var(--danger); border-color: var(--danger-soft); }
+  .btn.sm.danger:hover { background: var(--danger-soft); border-color: var(--danger); }
+
+  /* Case list */
+  .caselist { display: flex; flex-direction: column; }
+  .case-item { display: flex; flex-direction: column; gap: 5px; padding: 13px 15px; border: 1px solid transparent;
+    border-bottom: 1px solid var(--border); cursor: pointer; transition: transform .15s ease, background .2s ease; }
+  .case-item:last-child { border-bottom: none; }
+  .case-item:hover { background: var(--surface-2); transform: translateX(3px); }
+  .case-item.active { background: var(--primary-soft); border-left: 3px solid var(--primary); }
+  .case-item .ref { font-weight: 650; font-size: 13.5px; }
+  .case-item .meta { font-size: 11.5px; color: var(--muted); }
+  .case-x { margin-left: 6px; border: none; background: transparent; color: var(--muted);
+    font-size: 13px; line-height: 1; cursor: pointer; padding: 3px 5px; border-radius: 7px; flex: none; }
+  .case-x:hover { background: var(--danger-soft); color: var(--danger); }
+  .empty { padding: 26px 16px; text-align: center; color: var(--muted); font-size: 13px; }
+
+  /* Badges */
+  .badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 650;
+    padding: 3px 10px; border-radius: 20px; border: 1px solid transparent; white-space: nowrap; letter-spacing: .01em; }
+  .badge.staff_started { background: var(--surface-2); color: var(--muted); border-color: var(--border); }
+  .badge.intake_complete { background: var(--primary-soft); color: var(--primary); }
+  .badge.scheduling_approved { background: var(--warn-soft); color: var(--warn); }
+  .badge.scheduling_halted { background: var(--danger-soft); color: var(--danger); }
+  .badge.scheduled, .badge.ok { background: var(--ok-soft); color: var(--ok); }
+
+  /* Detail */
+  #detailCard { min-height: 460px; }
+  .detail-head { display: flex; align-items: flex-start; gap: 14px; padding: 18px; border-bottom: 1px solid var(--border); }
+  .detail-head .ref { font-size: 19px; font-weight: 700; }
+  .detail-head .phone { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  .detail-head .right { margin-left: auto; text-align: right; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+
+  .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; padding: 18px; perspective: 1400px; }
+  @media (max-width: 720px) { .panels { grid-template-columns: 1fr; } }
+  .panel { overflow: hidden; }
+  .panel-h { padding: 12px 15px; border-bottom: 1px solid var(--border); font-size: 12.5px; font-weight: 650;
+    display: flex; align-items: center; gap: 8px; background: var(--surface-2); }
+  .panel-h .num { width: 21px; height: 21px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), #6aa2ff);
+    color: #fff; font-size: 11px; display: grid; place-items: center; font-weight: 700;
+    box-shadow: 0 4px 10px -3px rgba(var(--scene-a),.8); }
+  .panel-b { padding: 15px; }
+  .full { grid-column: 1 / -1; }
+
+  dl.kv { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 7px 14px; }
+  dl.kv dt { color: var(--muted); font-size: 12px; }
+  dl.kv dd { margin: 0; font-size: 13px; font-weight: 550; text-align: right; }
+
+  /* Timeline */
+  .timeline { list-style: none; margin: 0; padding: 4px 0; }
+  .timeline li { position: relative; padding: 0 0 16px 26px; }
+  .timeline li:before { content: ""; position: absolute; left: 6px; top: 3px; width: 11px; height: 11px;
+    border-radius: 50%; background: var(--surface-solid); border: 2px solid var(--border-strong); }
+  .timeline li:after { content: ""; position: absolute; left: 11px; top: 14px; bottom: 0; width: 2px; background: var(--border); }
+  .timeline li:last-child:after { display: none; }
+  .timeline li.done:before { background: var(--ok); border-color: var(--ok); }
+  .timeline li.current:before { background: var(--primary); border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-soft);
+    animation: pulse 1.8s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{ box-shadow: 0 0 0 4px var(--primary-soft);} 50%{ box-shadow: 0 0 0 8px transparent;} }
+  .timeline li.halt:before { background: var(--danger); border-color: var(--danger); }
+  .timeline .t-title { font-weight: 600; font-size: 13px; }
+  .timeline .t-sub { font-size: 11.5px; color: var(--muted); }
+  .timeline li.pending .t-title { color: var(--muted); font-weight: 500; }
+
+  /* Slots */
+  .slot { display: flex; align-items: center; gap: 12px; padding: 12px 13px; border: 1px solid var(--border-strong);
+    border-radius: 11px; margin-bottom: 9px; cursor: pointer; background: var(--surface-2);
+    transition: transform .15s ease, border-color .2s ease, box-shadow .2s ease; }
+  .slot:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 10px 22px -12px rgba(var(--scene-a),.6); }
+  .slot.selected { border-color: var(--primary); background: var(--primary-soft); }
+  .slot.proposed { border-color: var(--ok); background: var(--ok-soft); }
+  .slot input { accent-color: var(--primary); width: 17px; height: 17px; }
+  .slot .s-main { font-weight: 600; font-size: 13px; }
+  .slot .s-sub { font-size: 11.5px; color: var(--muted); }
+  .slot .s-tag { margin-left: auto; }
+
+  .notice { padding: 11px 13px; border-radius: 11px; font-size: 12.5px; display: flex; gap: 9px; align-items: flex-start; }
+  .notice.warn { background: var(--warn-soft); color: var(--warn); }
+  .notice.danger { background: var(--danger-soft); color: var(--danger); }
+  .notice.ok { background: var(--ok-soft); color: var(--ok); }
+  .notice.info { background: var(--primary-soft); color: var(--primary); }
+  .notice b { font-weight: 700; }
+
+  .stack { display: flex; flex-direction: column; gap: 9px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 9px; }
+  .muted { color: var(--muted); }
+  .divider { height: 1px; background: var(--border); margin: 4px 0 14px; }
+  .subtle-label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; margin-bottom: 8px; }
+  /* Appointment timetable (day-by-day slot picker) */
+  .timetable { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; }
+  .tt-col { flex: 1 0 128px; min-width: 116px; }
+  .tt-day { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase;
+    letter-spacing: .04em; margin-bottom: 8px; text-align: center; }
+  .tt-slots { display: flex; flex-direction: column; gap: 7px; }
+  .tt-slot { position: relative; display: flex; flex-direction: column; align-items: center; gap: 1px;
+    padding: 9px 6px; border: 1px solid var(--border-strong); border-radius: 10px;
+    background: var(--surface-2); cursor: pointer; text-align: center; transition: border-color .15s, background .15s, box-shadow .15s; }
+  .tt-slot input { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
+  .tt-slot:hover { border-color: var(--primary); }
+  .tt-slot.selected { background: var(--primary-soft); border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary) inset; }
+  .tt-slot.proposed { background: var(--ok-soft); border-color: var(--ok); }
+  .tt-time { font-weight: 700; font-size: 13px; }
+  .tt-prov { font-size: 10px; color: var(--muted); }
+  .tt-proposed-tag { font-size: 9.5px; font-weight: 700; color: var(--ok); text-transform: uppercase; letter-spacing: .03em; }
+  .disclaimer { font-size: 11px; color: var(--muted); padding: 14px 20px 30px; text-align: center; max-width: 1340px; margin: 0 auto; }
+
+  /* Alerts */
+  .alert-item { border: 1px solid var(--danger); background: var(--danger-soft); border-radius: 12px; padding: 12px 13px; margin-bottom: 10px;
+    backdrop-filter: blur(6px); }
+  .alert-item .a-top { display: flex; align-items: center; gap: 8px; }
+  .alert-item .a-ref { font-weight: 700; }
+  .alert-item .a-time { font-size: 11px; color: var(--muted); margin-left: auto; }
+  .alert-item .resolve-form { margin-top: 10px; display: none; }
+  .alert-item.expanded .resolve-form { display: block; }
+
+  /* Toast */
+  #toasts { position: fixed; bottom: 18px; right: 18px; z-index: 60; display: flex; flex-direction: column; gap: 9px; max-width: 340px; }
+  .toast { padding: 12px 15px; border-radius: 12px; box-shadow: var(--shadow-lift); font-size: 13px; color: #fff; animation: pop .25s ease;
+    backdrop-filter: blur(6px); }
+  .toast.ok { background: linear-gradient(135deg, var(--ok), #2fbd76); } .toast.err { background: linear-gradient(135deg, var(--danger), #e05646); }
+  .toast.info { background: linear-gradient(135deg, var(--primary), #4f8ff0); }
+  @keyframes pop { from { transform: translateY(10px) scale(.96); opacity: 0; } }
+
+  .placeholder { display: grid; place-items: center; min-height: 400px; text-align: center; color: var(--muted); padding: 30px; }
+  .placeholder .big { font-size: 44px; margin-bottom: 12px; opacity: .55; animation: bob 3.5s ease-in-out infinite; }
+  @keyframes bob { 0%,100%{ transform: translateY(0);} 50%{ transform: translateY(-8px);} }
+  [hidden] { display: none !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .logo, .placeholder .big, .timeline li.current:before { animation: none !important; }
+    .float-in { animation: none !important; }
+  }
+</style>
+</head>
+<body>
+<script>
+/* ================= In-page mock backend (standalone demo) =================
+   Makes this page a fully working dashboard with NO server: it intercepts
+   window.fetch and answers the same /api contract the Spring backend serves.
+   State lives in memory (per page load). A verified demo account is seeded:
+        username: dang    password: previsit123
+   You can also create a new account -- the email OTP code is shown on screen.
+   ========================================================================= */
+(function () {
+  "use strict";
+  var users = {}, session = null, cases = {}, runs = {}, alerts = {};
+  function otp() { return String(Math.floor(Math.random() * 1e6)).padStart(6, "0"); }
+  function id(n) { var s = ""; while (s.length < (n || 12)) s += Math.random().toString(16).slice(2); return s.slice(0, n || 12); }
+  function nowISO() { return new Date().toISOString(); }
+  // Seed a ready-to-use, already-verified account.
+  users["dang"] = { username: "dang", displayName: "Dang", email: "dang@example.com",
+    phone: "+6588044731", password: "previsit123", status: "ACTIVE", otp: null, caseCount: 0 };
+  function view(u) { return { username: u.username, displayName: u.displayName, email: u.email, caseCount: u.caseCount || 0 }; }
+
+  // Fixed appointment timetable (mirrors MockAppointmentGateway: 4 days x 3 times).
+  function buildSlots() {
+    var days = ["2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17"];
+    var times = [["01:00:00", "01:30:00"], ["03:00:00", "03:30:00"], ["06:30:00", "07:00:00"]];
+    var provs = ["Dr. Avery Chen", "Dr. Maya Rao"], out = [], i = 0;
+    for (var d = 0; d < days.length; d++) for (var t = 0; t < times.length; t++) {
+      var s = days[d] + "T" + times[t][0] + "Z", e = days[d] + "T" + times[t][1] + "Z";
+      out.push({ slotId: "slot-" + s, startsAt: s, endsAt: e, providerName: provs[i % 2],
+        locationName: "Demo Primary Care Clinic", serviceType: "Primary care visit" });
+      i++;
+    }
+    return out;
+  }
+  var SLOTS = buildSlots();
+
+  function res(status, obj, cookie) {
+    return Promise.resolve({
+      ok: status >= 200 && status < 300, status: status, statusText: "",
+      headers: { get: function () { return "application/json"; } },
+      json: function () { return Promise.resolve(obj === undefined ? null : obj); }
+    });
+  }
+  function err(status, message) { return res(status, { message: message }); }
+
+  var realFetch = window.fetch ? window.fetch.bind(window) : null;
+  window.fetch = function (url, opts) {
+    opts = opts || {};
+    var path = String(url).replace(/^https?:\/\/[^/]+/, "");
+    if (path.indexOf("/api/") !== 0)
+      return realFetch ? realFetch(url, opts) : err(404, "no network in demo");
+    var m = (opts.method || "GET").toUpperCase();
+    var b = {}; try { b = opts.body ? JSON.parse(opts.body) : {}; } catch (e) {}
+
+    /* ---- health ---- */
+    if (m === "GET" && path === "/api/health") return res(200, { status: "ok" });
+
+    /* ---- auth ---- */
+    if (m === "GET" && path === "/api/auth/me") { var u = users[session]; return u ? res(200, view(u)) : err(401, "Not signed in"); }
+    if (path === "/api/auth/register") {
+      var un = (b.username || "").trim().toLowerCase();
+      if (un.length < 3) return err(400, "Username must be at least 3 characters");
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test((b.email || "").trim())) return err(400, "A valid email address is required");
+      if (!/^\+[1-9]\d{7,14}$/.test((b.phone || "").trim())) return err(400, "Phone must be E.164 format, e.g. +6588044731");
+      if ((b.password || "").length < 6) return err(400, "Password must be at least 6 characters");
+      if (users[un]) return err(409, "That username is already taken");
+      var code = otp();
+      users[un] = { username: un, displayName: (b.displayName || "").trim(), email: (b.email || "").trim(),
+        phone: (b.phone || "").trim(), password: b.password, status: "PENDING", otp: code, caseCount: 0 };
+      return res(200, { status: "PENDING_VERIFICATION", username: un, email: users[un].email, emailSent: false, devOtp: code });
+    }
+    if (path === "/api/auth/verify-otp") {
+      var uu = users[(b.username || "").trim().toLowerCase()];
+      if (!uu) return err(400, "No account found for that username");
+      if (uu.status === "ACTIVE") return err(409, "Already verified. Please sign in.");
+      if ((b.code || "").trim() !== uu.otp) return err(400, "Incorrect code. Please try again.");
+      uu.status = "ACTIVE"; uu.otp = null; session = uu.username;
+      return res(200, view(uu), true);
+    }
+    if (path === "/api/auth/resend-otp") {
+      var ru = users[(b.username || "").trim().toLowerCase()];
+      if (!ru) return err(400, "No account found for that username");
+      ru.otp = otp();
+      return res(200, { status: "PENDING_VERIFICATION", username: ru.username, email: ru.email, emailSent: false, devOtp: ru.otp });
+    }
+    if (path === "/api/auth/login") {
+      var lu = users[(b.username || "").trim().toLowerCase()];
+      if (!lu || lu.password !== b.password) return err(401, "Invalid username or password");
+      if (lu.status !== "ACTIVE") return err(403, "ACCOUNT_PENDING_VERIFICATION");
+      session = lu.username; return res(200, view(lu), true);
+    }
+    if (path === "/api/auth/logout") { session = null; return res(200, {}); }
+
+    /* ---- staff alerts ---- */
+    if (m === "GET" && path === "/api/staff-alerts") {
+      var list = Object.keys(alerts).map(function (k) { return alerts[k]; });
+      return res(200, list);
+    }
+    var rm = path.match(/^\/api\/staff-alerts\/([^/]+)\/resolution$/);
+    if (rm && m === "POST") { delete alerts[rm[1]]; return res(204); }
+
+    /* ---- intake cases ---- */
+    if (m === "POST" && path === "/api/intake-cases") {
+      if (!session) return err(401, "Login required");
+      var cid = id(12);
+      cases[cid] = { caseId: cid, patientReference: b.patientReference || "", caseStatus: "STAFF_STARTED", createdAt: nowISO() };
+      users[session].caseCount = (users[session].caseCount || 0) + 1;
+      return res(201, { caseId: cid, patientReference: cases[cid].patientReference, caseStatus: "STAFF_STARTED", createdAt: cases[cid].createdAt });
+    }
+    var cm = path.match(/^\/api\/intake-cases\/([^/]+)(\/[^?]*)?$/);
+    if (cm) {
+      var c = cases[cm[1]]; var sub = cm[2] || "";
+      if (!c) return err(404, "Case not found");
+      var caseResp = function () { return { caseId: c.caseId, patientReference: c.patientReference, caseStatus: c.caseStatus, createdAt: c.createdAt }; };
+
+      if (m === "GET" && sub === "") return res(200, caseResp());
+
+      if (m === "POST" && sub === "/intake-submission") {
+        if (b.emergencyFlag) {
+          c.caseStatus = "SCHEDULING_HALTED";
+          var aid = id(12);
+          alerts[aid] = { alertId: aid, caseId: c.caseId, patientReference: c.patientReference, createdAt: nowISO() };
+        } else {
+          c.caseStatus = "INTAKE_COMPLETE";
+        }
+        return res(200, caseResp());
+      }
+      if (m === "POST" && sub === "/scheduling-approval") {
+        if (c.caseStatus === "INTAKE_COMPLETE") c.caseStatus = "SCHEDULING_APPROVED";
+        return res(200, caseResp());
+      }
+      if (m === "POST" && sub === "/call-runs") {
+        var rid = id(12);
+        runs[rid] = { runId: rid, callRunStatus: "COMPLETED", result: { outcome: "COMPLETED", callbackRequested: false }, createdAt: nowISO(), updatedAt: nowISO() };
+        return res(201, runs[rid]);
+      }
+      var runGet = sub.match(/^\/call-runs\/([^/]+)$/);
+      if (m === "GET" && runGet) { var rr = runs[runGet[1]]; return rr ? res(200, rr) : err(404, "Call run not found"); }
+
+      if (m === "GET" && sub === "/available-slots") return res(200, SLOTS);
+      if (m === "POST" && sub === "/slot-proposal") { c.proposedSlotId = b.slotId; return res(204); }
+      if (m === "POST" && sub === "/appointment-confirmation") {
+        var slot = null; for (var i = 0; i < SLOTS.length; i++) if (SLOTS[i].slotId === b.slotId) slot = SLOTS[i];
+        return res(201, { appointmentId: id(12), slot: slot, patientReference: c.patientReference, status: "SCHEDULED" });
+      }
+    }
+    return err(404, "Not found");
+  };
+
+  // A small banner so it's obvious this is the offline demo build.
+  window.addEventListener("DOMContentLoaded", function () {
+    var d = document.createElement("div");
+    d.innerHTML = "<b>Interactive demo</b> · runs in your browser, no server · sign in with <code>dang</code> / <code>previsit123</code>, or create an account (OTP shows on screen)";
+    d.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:9999;padding:7px 12px;font:12px/1.4 system-ui,-apple-system,sans-serif;text-align:center;background:#1d68d6;color:#fff;opacity:.96";
+    document.body.appendChild(d);
+  });
+})();
+</script>
+<canvas id="bg3d"></canvas>
+<div class="scrim"></div>
+
+<!-- ===== Login / Register overlay ===== -->
+<div id="authOverlay" class="auth-overlay" hidden>
+  <div class="auth-card">
+    <div class="auth-brand">
+      <div class="logo lg">C</div>
+      <div>
+        <div class="auth-title">PreVisit Call-E Coordinator</div>
+        <div class="auth-sub">Clinic coordination dashboard</div>
+      </div>
+    </div>
+
+    <div class="auth-tabs" role="tablist">
+      <button class="auth-tab active" id="tabLogin" role="tab">Sign in</button>
+      <button class="auth-tab" id="tabRegister" role="tab">Create account</button>
+    </div>
+
+    <!-- Sign in -->
+    <form id="loginForm" class="auth-form">
+      <div class="field">
+        <label for="loginUser">Username</label>
+        <input type="text" id="loginUser" autocomplete="username" placeholder="your username" required />
+      </div>
+      <div class="field">
+        <label for="loginPass">Password</label>
+        <input type="password" id="loginPass" autocomplete="current-password" placeholder="••••••••" required />
+      </div>
+      <div class="auth-error" id="loginError" hidden></div>
+      <button class="btn primary block" type="submit">Sign in</button>
+    </form>
+
+    <!-- Register -->
+    <form id="registerForm" class="auth-form" hidden>
+      <div class="field">
+        <label for="regName">Your name</label>
+        <input type="text" id="regName" autocomplete="name" placeholder="e.g. Dang" required />
+      </div>
+      <div class="field">
+        <label for="regUser">Username</label>
+        <input type="text" id="regUser" autocomplete="username" placeholder="at least 3 characters" required />
+      </div>
+      <div class="field">
+        <label for="regEmail">Email</label>
+        <input type="email" id="regEmail" autocomplete="email" placeholder="you@example.com" required />
+        <div class="hint">We'll email you a 6-digit code to verify your account.</div>
+      </div>
+      <div class="field">
+        <label for="regPhone">Phone number</label>
+        <input type="tel" id="regPhone" autocomplete="tel" placeholder="+6588044731" required />
+        <div class="hint">E.164 format: <code>+</code> then 8–15 digits.</div>
+      </div>
+      <div class="field">
+        <label for="regPass">Password</label>
+        <input type="password" id="regPass" autocomplete="new-password" placeholder="at least 6 characters" required />
+      </div>
+      <div class="auth-error" id="registerError" hidden></div>
+      <button class="btn primary block" type="submit">Create account</button>
+    </form>
+
+    <!-- Email OTP verification step -->
+    <form id="otpForm" class="auth-form" hidden>
+      <div class="otp-intro">
+        <div class="otp-badge">✉</div>
+        <div>
+          <div class="otp-title">Verify your email</div>
+          <div class="otp-sub">Enter the 6-digit code we sent to <b id="otpEmail">your email</b>.</div>
+        </div>
+      </div>
+      <div class="field">
+        <label for="otpCode">Verification code</label>
+        <input type="text" id="otpCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6"
+               class="otp-input" placeholder="000000" required />
+      </div>
+      <div class="auth-error" id="otpError" hidden></div>
+      <div class="otp-dev" id="otpDev" hidden></div>
+      <button class="btn primary block" type="submit">Verify &amp; continue</button>
+      <div class="otp-actions">
+        <button type="button" class="linkbtn" id="otpResend">Resend code</button>
+        <button type="button" class="linkbtn" id="otpBack">← Back to sign up</button>
+      </div>
+    </form>
+
+    <p class="auth-note">Coordination staff sign-in for the demo. Your account and
+      activity are stored locally in the app's SQLite database.</p>
+  </div>
+</div>
+
+<style>
+  .userchip { display: flex; align-items: center; gap: 9px; }
+  .userchip .avatar { width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), #6aa2ff); color: #fff; font-weight: 700;
+    display: grid; place-items: center; font-size: 13px; text-transform: uppercase; }
+  .userchip .uc-name { font-size: 13px; font-weight: 600; max-width: 160px; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap; }
+
+  .logo.lg { width: 46px; height: 46px; border-radius: 13px; font-size: 22px; }
+
+  .auth-overlay { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center;
+    padding: 24px; background: radial-gradient(1000px 700px at 50% -10%, rgba(var(--scene-b),.14), transparent 60%);
+    backdrop-filter: blur(3px); }
+  .auth-card { width: 100%; max-width: 420px; background: var(--surface);
+    backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--border); border-radius: 20px; box-shadow: var(--shadow-lift);
+    padding: 26px; animation: floatIn .5s cubic-bezier(.2,.7,.3,1) both; }
+  .auth-brand { display: flex; align-items: center; gap: 13px; margin-bottom: 20px; }
+  .auth-title { font-size: 16px; font-weight: 700; letter-spacing: -.01em; }
+  .auth-sub { font-size: 12px; color: var(--muted); }
+  .auth-tabs { display: flex; gap: 6px; background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 5px; margin-bottom: 18px; }
+  .auth-tab { flex: 1; padding: 9px; border: none; border-radius: 9px; background: transparent;
+    color: var(--muted); font: inherit; font-weight: 600; font-size: 13px; cursor: pointer; }
+  .auth-tab.active { background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow); }
+  .auth-form .field { margin-bottom: 14px; }
+  .auth-error { background: var(--danger-soft); color: var(--danger); border-radius: 9px;
+    padding: 9px 12px; font-size: 12.5px; margin-bottom: 12px; }
+  .auth-note { font-size: 11.5px; color: var(--muted); margin: 16px 0 0; text-align: center; line-height: 1.5; }
+
+  /* auth-06 inspired flourishes + OTP step */
+  .auth-card::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px;
+    background: linear-gradient(90deg, var(--primary), #6aa2ff, transparent);
+    border-radius: 20px 20px 0 0; }
+  .auth-card { position: relative; }
+  .linkbtn { background: none; border: none; color: var(--primary); font: inherit; font-size: 12.5px;
+    font-weight: 600; cursor: pointer; padding: 4px 2px; }
+  .linkbtn:hover { text-decoration: underline; }
+  .otp-actions { display: flex; justify-content: space-between; margin-top: 12px; }
+  .otp-intro { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  .otp-badge { width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center;
+    font-size: 19px; background: var(--primary-soft); color: var(--primary); flex: none; }
+  .otp-title { font-size: 15px; font-weight: 700; }
+  .otp-sub { font-size: 12.5px; color: var(--muted); line-height: 1.5; margin-top: 2px; }
+  .otp-input { text-align: center; font-size: 26px; font-weight: 700; letter-spacing: 12px;
+    padding-left: 12px; }
+  .otp-dev { background: var(--ok-soft); color: var(--text); border: 1px dashed var(--ok);
+    border-radius: 9px; padding: 9px 12px; font-size: 12px; margin-bottom: 12px; line-height: 1.5; }
+  .otp-dev b { font-size: 15px; letter-spacing: 3px; }
+</style>
+
+<header class="appbar">
+  <div class="brand">
+    <div class="logo">C</div>
+    <div>
+      <div class="title">PreVisit Call-E Coordinator</div>
+      <div class="sub">Clinic coordination dashboard</div>
+    </div>
+  </div>
+  <div class="spacer"></div>
+  <div class="health"><span class="dot" id="healthDot"></span><span id="healthText">checking backend…</span></div>
+  <div class="userchip" id="userChip" hidden>
+    <span class="avatar" id="userAvatar">?</span>
+    <span class="uc-name" id="userName"></span>
+    <button class="btn sm" id="logoutBtn" title="Sign out">Sign out</button>
+  </div>
+  <button class="icon-btn" id="apiBtn" title="Backend URL" aria-label="Backend URL">⚙</button>
+  <button class="icon-btn" id="themeBtn" title="Toggle theme" aria-label="Toggle theme">◐</button>
+</header>
+
+<div id="fileBanner" class="filebanner" hidden>
+  <span>⚠️</span>
+  <div>
+    <b>Opened as a local file.</b> The dashboard is talking to
+    <code id="fileBannerUrl"></code>. Start the backend (<code>mvn spring-boot:run</code>) so it's reachable,
+    or click <b>⚙</b> to change the URL. Best experience: open the app at
+    <code>http://localhost:8080/</code> — the backend serves this page with no CORS needed.
+  </div>
+  <button class="icon-btn" id="fileBannerClose" aria-label="Dismiss">✕</button>
+</div>
+
+<section class="bento" id="bentoRow">
+  <div class="bento-tile hotline">
+    <div class="bt-label">Coordination hotline</div>
+    <a class="bt-hotline" href="tel:+6588044731">+65 8804 4731</a>
+    <div class="bt-note">Call staff for help with an intake case</div>
+  </div>
+  <div class="bento-tile">
+    <div class="bt-label">Active cases</div>
+    <div class="bt-metric" id="bentoCases">0</div>
+    <div class="bt-note">Cases you are coordinating</div>
+  </div>
+  <div class="bento-tile">
+    <div class="bt-label">Staff alerts</div>
+    <div class="bt-metric" id="bentoAlerts">0</div>
+    <div class="bt-note">Scheduling-halted cases needing review</div>
+  </div>
+  <div class="bento-tile">
+    <div class="bt-label">Backend</div>
+    <div class="bt-metric small" id="bentoHealth">checking…</div>
+    <div class="bt-note">Live connection to the coordination API</div>
+  </div>
+</section>
+
+<div class="layout">
+  <!-- LEFT COLUMN -->
+  <div>
+    <section class="card tilt float-in">
+      <div class="card-h"><h2>Start intake case</h2></div>
+      <div class="card-b">
+        <form id="startForm">
+          <div class="field">
+            <label for="patientRef">Patient reference</label>
+            <input type="text" id="patientRef" placeholder="e.g. DEMO-PATIENT-01" required />
+            <div class="hint">A fake patient or consenting teammate only.</div>
+          </div>
+          <div class="field">
+            <label for="phone">Demo phone number</label>
+            <input type="tel" id="phone" placeholder="+6591234567" required />
+            <div class="hint">E.164 format: <code>+</code> then 8–15 digits.</div>
+          </div>
+          <button class="btn primary block" type="submit">Start case &amp; plan Call-E</button>
+        </form>
+      </div>
+    </section>
+
+    <section class="card tilt float-in">
+      <div class="card-h"><h2>Patient cases</h2><span class="count" id="caseCount">0</span></div>
+      <div class="caselist" id="caseList"><div class="empty">No cases yet. Start one above.</div></div>
+    </section>
+
+    <section class="card tilt float-in">
+      <div class="card-h"><h2>Staff alerts</h2><span class="count" id="alertCount">0</span></div>
+      <div class="card-b" id="alertBox"><div class="empty" style="padding:6px 0">No active alerts.</div></div>
+    </section>
+  </div>
+
+  <!-- RIGHT COLUMN: DETAIL -->
+  <div>
+    <section class="card tilt" id="detailCard">
+      <div class="placeholder" id="detailPlaceholder">
+        <div>
+          <div class="big">🩺</div>
+          <div><b>Select a case</b> to view its timeline, intake summary,<br/>appointment, and staff-ready handoff.</div>
+        </div>
+      </div>
+      <div id="detailContent" hidden></div>
+    </section>
+  </div>
+</div>
+
+<div class="disclaimer">
+  Coordination workflow only — this application does not diagnose, does not replace emergency services, and never schedules a
+  case flagged as a possible emergency. Demo uses fake patients or consenting teammates.
+</div>
+
+<div id="toasts"></div>
+
+<script>
+"use strict";
+/* ============================================================
+   PreVisit Call-E Coordinator — clinic dashboard frontend
+   Talks to the Spring Boot backend on the same origin.
+   Endpoints used (see IntakeCaseController / StaffAlertController):
+     GET  /api/health
+     POST /api/intake-cases
+     GET  /api/intake-cases/{id}
+     POST /api/intake-cases/{id}/intake-submission
+     POST /api/intake-cases/{id}/scheduling-approval
+     POST /api/intake-cases/{id}/call-runs
+     GET  /api/intake-cases/{id}/call-runs/{runId}
+     GET  /api/intake-cases/{id}/available-slots
+     POST /api/intake-cases/{id}/slot-proposal          (204)
+     POST /api/intake-cases/{id}/appointment-confirmation (201)
+     GET  /api/staff-alerts
+     POST /api/staff-alerts/{alertId}/resolution        (204)
+   ============================================================ */
+
+const LS_KEY = "previsit.cases.v1";
+const API_LS = "previsit.apiBase";
+
+/* Resolve the backend base URL.
+   - Served by the backend over http/https  -> same origin ("")
+   - Opened directly as a file (file://)      -> default http://localhost:8080
+   - Overridden by the user via the ⚙ control -> that value (persisted) */
+function apiBase() {
+  let saved = null; try { saved = localStorage.getItem(API_LS); } catch {}
+  if (saved) return saved.replace(/\/+$/, "");
+  if (location.protocol === "file:") return "http://localhost:8080";
+  return "";
+}
+const API = apiBase(); // retained for reference/logging
+
+const STATUS_LABEL = {
+  STAFF_STARTED: "Staff started",
+  INTAKE_COMPLETE: "Intake complete",
+  SCHEDULING_APPROVED: "Scheduling approved",
+  SCHEDULING_HALTED: "Scheduling halted",
+};
+const REASON_LABEL = {
+  CARE_FOLLOW_UP_RECORDED: "Care follow-up recorded",
+  REFERRED_TO_ANOTHER_FACILITY: "Referred to another facility",
+  OTHER: "Other",
+};
+const OUTCOME_LABEL = {
+  COMPLETED: "Completed",
+  RECIPIENT_UNAVAILABLE: "Recipient unavailable",
+  CALLBACK_REQUESTED: "Callback requested",
+};
+
+/* ---------- local mirror store ---------- */
+let store = load();
+let selectedId = null;
+
+let CURRENT_USER = null; // {username, displayName, caseCount}
+function casesKey() {
+  return LS_KEY + ":" + (CURRENT_USER && CURRENT_USER.username ? CURRENT_USER.username : "anon");
+}
+function load() {
+  try { return JSON.parse(localStorage.getItem(casesKey())) || {}; }
+  catch { return {}; }
+}
+function persist() {
+  try { localStorage.setItem(casesKey(), JSON.stringify(store)); } catch (e) {}
+}
+function upsert(id, patch) {
+  store[id] = Object.assign({}, store[id], patch);
+  persist();
+}
+
+/* Remove a case from THIS user's local working list. This clears the staff
+   member's dashboard entry only; it does not delete the backend intake
+   record, its audit trail, or any staff alert -- and it never lifts an
+   emergency scheduling halt. */
+function removeCase(id) {
+  if (!id || !store[id]) return;
+  const label = store[id].patientReference || "this case";
+  delete store[id];
+  persist();
+  if (selectedId === id) selectedId = null;
+  renderCaseList();
+  renderDetail();
+  toast("Removed " + label + " from your list", "info");
+}
+
+/* ---------- API helpers ---------- */
+async function api(path, opts = {}) {
+  const res = await fetch(apiBase() + path, Object.assign({
+    headers: { "Content-Type": "application/json", "Accept": "application/json" },
+  }, opts));
+  if (!res.ok) {
+    let msg = res.status + " " + res.statusText;
+    try { const b = await res.json(); if (b.message) msg = b.message; else if (b.error) msg = b.error; } catch {}
+    const err = new Error(msg); err.status = res.status; throw err;
+  }
+  if (res.status === 204) return null;
+  const ct = res.headers.get("content-type") || "";
+  return ct.includes("json") ? res.json() : null;
+}
+
+/* ---------- utilities ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c]));
+function fmt(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d)) return iso;
+  return d.toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+function fmtRange(a, b) {
+  const s = new Date(a), e = new Date(b);
+  const day = s.toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" });
+  const t = (d) => d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return day + " · " + t(s) + "–" + t(e);
+}
+function toast(msg, kind = "info") {
+  const el = document.createElement("div");
+  el.className = "toast " + kind; el.textContent = msg;
+  $("#toasts").appendChild(el);
+  setTimeout(() => { el.style.opacity = "0"; el.style.transition = "opacity .3s"; setTimeout(() => el.remove(), 300); }, 3200);
+}
+function badge(status) {
+  return `<span class="badge ${esc(status.toLowerCase())}">${esc(STATUS_LABEL[status] || status)}</span>`;
+}
+
+/* ============================================================
+   HEALTH
+   ============================================================ */
+async function checkHealth() {
+  try {
+    const h = await api("/api/health");
+    const ok = h && h.status === "ok";
+    $("#healthDot").className = "dot " + (ok ? "ok" : "down");
+    $("#healthText").textContent = ok ? "Backend online" : "Backend reachable";
+    { const _b = $("#bentoHealth"); if (_b) _b.textContent = ok ? "Online" : "Reachable"; }
+  } catch {
+    $("#healthDot").className = "dot down";
+    $("#healthText").textContent = "Backend offline";
+    { const _b = $("#bentoHealth"); if (_b) _b.textContent = "Offline"; }
+    if (location.protocol === "file:") { $("#fileBannerUrl").textContent = apiBase(); $("#fileBanner").hidden = false; }
+  }
+}
+
+/* ============================================================
+   START CASE
+   ============================================================ */
+$("#startForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const patientReference = $("#patientRef").value.trim();
+  const demoPhoneNumber = $("#phone").value.trim();
+  if (!/^\+[1-9]\d{7,14}$/.test(demoPhoneNumber)) {
+    toast("Phone must be E.164, e.g. +6591234567", "err"); return;
+  }
+  const btn = $("#startForm button"); btn.disabled = true;
+  try {
+    const c = await api("/api/intake-cases", {
+      method: "POST",
+      body: JSON.stringify({ patientReference, demoPhoneNumber }),
+    });
+    upsert(c.caseId, {
+      caseId: c.caseId, patientReference: c.patientReference,
+      demoPhoneNumber, caseStatus: c.caseStatus, createdAt: c.createdAt,
+    });
+    $("#startForm").reset();
+    selectedId = c.caseId;
+    renderCaseList(); renderDetail();
+    toast("Intake case started", "ok");
+  } catch (err) {
+    toast("Could not start case: " + err.message, "err");
+  } finally { btn.disabled = false; }
+});
+
+/* ============================================================
+   CASE LIST
+   ============================================================ */
+function sortedCases() {
+  return Object.values(store).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+}
+function renderCaseList() {
+  const list = $("#caseList");
+  const cases = sortedCases();
+  $("#caseCount").textContent = cases.length;
+  { const _b = $("#bentoCases"); if (_b) _b.textContent = cases.length; }
+  if (!cases.length) { list.innerHTML = `<div class="empty">No cases yet. Start one above.</div>`; return; }
+  list.innerHTML = cases.map(c => `
+    <div class="case-item ${c.caseId === selectedId ? "active" : ""}" data-id="${esc(c.caseId)}">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="ref">${esc(c.patientReference)}</span>
+        <span style="margin-left:auto">${badge(c.caseStatus)}</span>
+        <button class="case-x" data-del="${esc(c.caseId)}" title="Remove from list" aria-label="Remove case from list">✕</button>
+      </div>
+      <div class="meta">${esc(c.demoPhoneNumber || "")} · started ${fmt(c.createdAt)}</div>
+    </div>`).join("");
+  list.querySelectorAll(".case-item").forEach(el =>
+    el.addEventListener("click", () => { selectedId = el.dataset.id; refreshSelected().then(() => { renderCaseList(); renderDetail(); }); }));
+  list.querySelectorAll(".case-x").forEach(x =>
+    x.addEventListener("click", (e) => { e.stopPropagation(); removeCase(x.dataset.del); }));
+}
+
+async function refreshSelected() {
+  if (!selectedId) return;
+  try {
+    const c = await api("/api/intake-cases/" + selectedId);
+    upsert(c.caseId, { caseStatus: c.caseStatus, patientReference: c.patientReference, createdAt: c.createdAt });
+  } catch (err) {
+    if (err.status === 404) toast("Case not found on backend (it may have restarted)", "err");
+  }
+}
+
+/* ============================================================
+   DETAIL VIEW
+   ============================================================ */
+function renderDetail() {
+  const ph = $("#detailPlaceholder"), content = $("#detailContent");
+  const c = store[selectedId];
+  if (!c) { ph.hidden = false; content.hidden = true; return; }
+  ph.hidden = true; content.hidden = false;
+
+  const status = c.caseStatus;
+  const halted = status === "SCHEDULING_HALTED";
+
+  content.innerHTML = `
+    <div class="detail-head">
+      <div>
+        <div class="ref">${esc(c.patientReference)}</div>
+        <div class="phone">${esc(c.demoPhoneNumber || "—")} · case ${esc(c.caseId.slice(0,8))}…</div>
+      </div>
+      <div class="right">
+        ${badge(status)}
+        <button class="btn sm" id="refreshBtn">↻ Refresh</button>
+        <button class="btn sm danger" id="removeCaseBtn" title="Remove this case from your list">🗑 Remove</button>
+      </div>
+    </div>
+
+    ${halted ? `<div style="padding:0 18px"><div class="notice danger" style="margin-top:14px">
+        <span>⚠️</span><div><b>Scheduling halted — possible emergency flag.</b>
+        This case cannot be scheduled in this application. Provide immediate emergency-care guidance to the patient
+        and follow up through the staff alert list. Resolving the alert does not lift the halt.</div></div></div>` : ""}
+
+    <div class="panels">
+      <div class="panel float-in">
+        <div class="panel-h"><span class="num">1</span> Case timeline</div>
+        <div class="panel-b">${renderTimeline(c)}</div>
+      </div>
+
+      <div class="panel float-in">
+        <div class="panel-h"><span class="num">2</span> Intake summary</div>
+        <div class="panel-b" id="intakePanel">${renderIntake(c)}</div>
+      </div>
+
+      <div class="panel float-in">
+        <div class="panel-h"><span class="num">3</span> Call-E coordination call</div>
+        <div class="panel-b" id="callPanel">${renderCall(c)}</div>
+      </div>
+
+      <div class="panel float-in">
+        <div class="panel-h"><span class="num">4</span> Appointment &amp; confirmation</div>
+        <div class="panel-b" id="apptPanel">${renderAppt(c)}</div>
+      </div>
+
+      <div class="panel full float-in">
+        <div class="panel-h"><span class="num">5</span> Staff review handoff</div>
+        <div class="panel-b">${renderReview(c)}</div>
+      </div>
+    </div>`;
+
+  $("#refreshBtn").addEventListener("click", () => refreshSelected().then(() => { renderCaseList(); renderDetail(); toast("Refreshed", "info"); }));
+  const _rm = $("#removeCaseBtn");
+  if (_rm) _rm.addEventListener("click", () => {
+    if (_rm.dataset.confirm !== "1") {
+      _rm.dataset.confirm = "1";
+      _rm.textContent = "Confirm remove?";
+      setTimeout(() => { const b = $("#removeCaseBtn"); if (b && b.dataset.confirm === "1") { b.dataset.confirm = ""; b.textContent = "🗑 Remove"; } }, 3000);
+      return;
+    }
+    removeCase(c.caseId);
+  });
+  wireDetailActions(c);
+  attachTilt();
+}
+
+/* ---------- Timeline ---------- */
+function renderTimeline(c) {
+  const s = c.caseStatus;
+  const appt = c.appointment;
+  const steps = [
+    { key: "started", title: "Intake case started", sub: "Staff started · " + fmt(c.createdAt), done: true },
+    { key: "call", title: "Call-E coordination call", sub: c.callStatus ? OUTCOME_LABEL[c.callResult?.outcome] || c.callStatus : "Not started", done: !!c.callStatus },
+    { key: "intake", title: "Intake recorded", sub: c.submission ? (s === "SCHEDULING_HALTED" ? "Emergency flag" : "Non-emergency") : "Awaiting submission", done: !!c.submission, halt: s === "SCHEDULING_HALTED" },
+    { key: "approve", title: "Scheduling approved", sub: s === "SCHEDULING_APPROVED" || appt ? "Approved by staff" : (s === "SCHEDULING_HALTED" ? "Blocked (halted)" : "Pending"), done: s === "SCHEDULING_APPROVED" || !!appt },
+    { key: "propose", title: "Slot proposed", sub: c.proposedSlotId ? "Discussed with patient" : "Pending", done: !!c.proposedSlotId },
+    { key: "confirm", title: "Appointment scheduled", sub: appt ? "Confirmed · " + (appt.status || "SCHEDULED") : "Awaiting verbal confirmation", done: !!appt },
+  ];
+  let currentIdx = steps.findIndex(st => !st.done);
+  if (steps.find(st => st.halt)) currentIdx = -1;
+  return `<ul class="timeline">` + steps.map((st, i) => {
+    let cls = st.done ? "done" : "pending";
+    if (st.halt) cls = "halt";
+    else if (i === currentIdx) cls = "current";
+    return `<li class="${cls}"><div class="t-title">${esc(st.title)}</div><div class="t-sub">${esc(st.sub)}</div></li>`;
+  }).join("") + `</ul>`;
+}
+
+/* ---------- Intake summary panel ---------- */
+function renderIntake(c) {
+  if (!c.submission) {
+    if (c.caseStatus === "STAFF_STARTED") {
+      return `
+        <p class="muted" style="margin-top:0">Record the non-diagnostic intake collected on the call.</p>
+        <form id="intakeForm" class="stack">
+          <div class="field" style="margin:0">
+            <label for="reason">Reason for visit</label>
+            <input type="text" id="reason" placeholder="e.g. Routine primary-care follow-up" required />
+          </div>
+          <div class="field" style="margin:0">
+            <label for="lang">Preferred language</label>
+            <input type="text" id="lang" placeholder="e.g. English" required />
+          </div>
+          <div class="check"><input type="checkbox" id="mobility" /><label for="mobility">Mobility / accessibility assistance needed</label></div>
+          <div class="check"><input type="checkbox" id="emergency" /><label for="emergency">Possible emergency red flag identified</label></div>
+          <div class="hint" style="margin-top:-2px">Marking an emergency flag halts scheduling and raises a staff alert.</div>
+          <button class="btn primary" type="submit">Submit intake</button>
+        </form>`;
+    }
+    return `<p class="muted">Intake was recorded on the backend, but its details are not part of this session's local mirror.</p>`;
+  }
+  const su = c.submission;
+  return `
+    <dl class="kv">
+      <dt>Reason for visit</dt><dd>${esc(su.reasonForVisit)}</dd>
+      <dt>Preferred language</dt><dd>${esc(su.preferredLanguage)}</dd>
+      <dt>Mobility assistance</dt><dd>${su.mobilityAssistanceNeeded ? "Needed" : "Not needed"}</dd>
+      <dt>Emergency flag</dt><dd>${su.emergencyFlag ? `<span class="badge scheduling_halted">Flagged</span>` : `<span class="badge ok">None</span>`}</dd>
+    </dl>
+    <div class="divider" style="margin:14px 0 10px"></div>
+    <div class="subtle-label">Urgency</div>
+    ${su.emergencyFlag
+      ? `<div class="notice danger" style="padding:9px 11px"><span>⚠️</span><div>Emergency red flag — scheduling halted.</div></div>`
+      : `<div class="notice ok" style="padding:9px 11px"><span>✓</span><div>Non-emergency — eligible for scheduling approval.</div></div>`}`;
+}
+
+/* ---------- Call-E panel ---------- */
+function renderCall(c) {
+  const canCall = c.caseStatus === "INTAKE_COMPLETE" || c.caseStatus === "SCHEDULING_APPROVED";
+  let body = "";
+  if (c.callStatus) {
+    const r = c.callResult || {};
+    body += `
+      <dl class="kv">
+        <dt>Run status</dt><dd><span class="badge ${c.callStatus === "COMPLETED" ? "ok" : (c.callStatus === "FAILED" ? "scheduling_halted" : "scheduling_approved")}">${esc(c.callStatus)}</span></dd>
+        <dt>Result</dt><dd>${esc(OUTCOME_LABEL[r.outcome] || "—")}</dd>
+        <dt>Callback requested</dt><dd>${r.callbackRequested ? "Yes" : "No"}</dd>
+        <dt>Run ID</dt><dd style="font-size:11px">${esc((c.callRunId||"").slice(0,8))}…</dd>
+      </dl>
+      <div class="hint" style="margin-top:8px">Call-E returns a fixed, non-diagnostic outcome only — never a transcript.</div>`;
+  } else {
+    body += `<p class="muted" style="margin-top:0">No coordination call yet.</p>`;
+  }
+  body += `<div class="actions" style="margin-top:12px">`;
+  body += `<button class="btn ${c.callStatus ? "" : "primary"}" id="startCallBtn" ${canCall ? "" : "disabled"}>${c.callStatus ? "Place another call" : "📞 Place Call-E call"}</button>`;
+  if (c.callRunId) body += `<button class="btn sm" id="pollCallBtn">Check result</button>`;
+  body += `</div>`;
+  if (!canCall && !c.callStatus) body += `<div class="hint" style="margin-top:8px">Available after intake is recorded (non-emergency).</div>`;
+  return body;
+}
+
+/* ---------- Appointment panel ---------- */
+function renderTimetable(c) {
+  // Group the offered slots by their local calendar day, preserving the
+  // backend's chronological order.
+  const byDay = {};
+  const order = [];
+  (c.slots || []).forEach(sl => {
+    const d = new Date(sl.startsAt);
+    const key = d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    if (!byDay[key]) { byDay[key] = []; order.push(key); }
+    byDay[key].push(sl);
+  });
+  const cols = order.map(day => {
+    const chips = byDay[day].map(sl => {
+      const isProp = sl.slotId === c.proposedSlotId;
+      const t = new Date(sl.startsAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+      return `
+        <label class="tt-slot ${isProp ? "proposed" : ""}" data-slot="${esc(sl.slotId)}" title="${esc(sl.providerName)} · ${esc(sl.serviceType)}">
+          <input type="radio" name="slotpick" value="${esc(sl.slotId)}" ${isProp ? "checked" : ""}/>
+          <span class="tt-time">${esc(t)}</span>
+          <span class="tt-prov">${esc(sl.providerName)}</span>
+          ${isProp ? `<span class="tt-proposed-tag">Proposed</span>` : ""}
+        </label>`;
+    }).join("");
+    return `<div class="tt-col"><div class="tt-day">${esc(day)}</div><div class="tt-slots">${chips}</div></div>`;
+  }).join("");
+  return `<div class="timetable">${cols}</div>`;
+}
+
+function renderAppt(c) {
+  const s = c.caseStatus;
+  if (c.appointment) {
+    const a = c.appointment, sl = a.slot;
+    return `
+      <div class="notice ok" style="margin-bottom:12px"><span>✓</span><div><b>Appointment scheduled.</b> Created after explicit verbal confirmation of the exact slot.</div></div>
+      <dl class="kv">
+        <dt>When</dt><dd>${esc(fmtRange(sl.startsAt, sl.endsAt))}</dd>
+        <dt>Provider</dt><dd>${esc(sl.providerName)}</dd>
+        <dt>Location</dt><dd>${esc(sl.locationName)}</dd>
+        <dt>Service</dt><dd>${esc(sl.serviceType)}</dd>
+        <dt>Status</dt><dd><span class="badge scheduled">${esc(a.status)}</span></dd>
+        <dt>Appt ID</dt><dd style="font-size:11px">${esc((a.appointmentId||"").slice(0,8))}…</dd>
+      </dl>`;
+  }
+  if (s === "SCHEDULING_HALTED")
+    return `<div class="notice danger"><span>⚠️</span><div>Scheduling is halted for this case. No slots can be offered.</div></div>`;
+  if (s === "STAFF_STARTED")
+    return `<p class="muted" style="margin-top:0">Record the intake first.</p>`;
+  if (s === "INTAKE_COMPLETE")
+    return `
+      <div class="notice info" style="margin-bottom:12px"><span>ℹ️</span><div>Intake is complete. Approve scheduling to load available slots.</div></div>
+      <button class="btn primary" id="approveBtn">Approve scheduling</button>`;
+  let body = `<div class="actions" style="margin-bottom:10px"><button class="btn sm" id="loadSlotsBtn">↻ Load available slots</button></div>`;
+  if (c.slots && c.slots.length) {
+    body += `<div class="subtle-label">Choose an appointment time</div>`;
+    body += renderTimetable(c);
+    body += `<div class="actions" style="margin-top:6px">
+      <button class="btn" id="proposeBtn">Propose selected slot</button>
+    </div>`;
+    if (c.proposedSlotId) {
+      body += `
+        <div class="divider" style="margin:14px 0 12px"></div>
+        <div class="subtle-label">Verbal confirmation</div>
+        <div class="check"><input type="checkbox" id="verbalConfirm" /><label for="verbalConfirm">Patient verbally confirmed this exact date and time</label></div>
+        <button class="btn ok" id="confirmBtn" disabled>Confirm &amp; schedule appointment</button>`;
+    }
+  } else {
+    body += `<p class="muted">No slots loaded yet.</p>`;
+  }
+  return body;
+}
+
+/* ---------- Staff review panel ---------- */
+function renderReview(c) {
+  const su = c.submission, a = c.appointment;
+  const missing = [];
+  if (!su) missing.push("intake submission");
+  if (su && !su.reasonForVisit) missing.push("reason for visit");
+  if (!c.callStatus) missing.push("Call-E coordination result");
+  if (!a && c.caseStatus !== "SCHEDULING_HALTED") missing.push("confirmed appointment");
+  return `
+    <dl class="kv" style="grid-template-columns:auto 1fr;max-width:640px">
+      <dt>Patient</dt><dd>${esc(c.patientReference)}</dd>
+      <dt>Case status</dt><dd>${badge(c.caseStatus)}</dd>
+      <dt>Reason for visit</dt><dd>${su ? esc(su.reasonForVisit) : "—"}</dd>
+      <dt>Language / accessibility</dt><dd>${su ? esc(su.preferredLanguage) + (su.mobilityAssistanceNeeded ? " · mobility assistance" : "") : "—"}</dd>
+      <dt>Urgency</dt><dd>${su ? (su.emergencyFlag ? `<span class="badge scheduling_halted">Emergency — halted</span>` : `<span class="badge ok">Routine</span>`) : "—"}</dd>
+      <dt>Call-E result</dt><dd>${c.callStatus ? esc(OUTCOME_LABEL[c.callResult?.outcome] || c.callStatus) : "—"}</dd>
+      <dt>Appointment</dt><dd>${a ? esc(fmtRange(a.slot.startsAt, a.slot.endsAt)) + " · " + esc(a.slot.providerName) : "—"}</dd>
+      <dt>Confirmation</dt><dd>${a ? `<span class="badge ok">Verbally confirmed</span>` : "Not confirmed"}</dd>
+    </dl>
+    <div style="margin-top:14px">
+      <div class="subtle-label">Missing or unanswered</div>
+      ${missing.length
+        ? `<div class="notice warn"><span>•</span><div>${missing.map(esc).join(", ")}</div></div>`
+        : `<div class="notice ok"><span>✓</span><div>All handoff items present. Ready for clinic staff.</div></div>`}
+    </div>`;
+}
+
+/* ============================================================
+   DETAIL ACTIONS
+   ============================================================ */
+function wireDetailActions(c) {
+  const intakeForm = $("#intakeForm");
+  if (intakeForm) intakeForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const payload = {
+      reasonForVisit: $("#reason").value.trim(),
+      preferredLanguage: $("#lang").value.trim(),
+      mobilityAssistanceNeeded: $("#mobility").checked,
+      emergencyFlag: $("#emergency").checked,
+    };
+    try {
+      const r = await api("/api/intake-cases/" + c.caseId + "/intake-submission", { method: "POST", body: JSON.stringify(payload) });
+      upsert(c.caseId, { caseStatus: r.caseStatus, submission: payload });
+      renderCaseList(); renderDetail();
+      loadAlerts();
+      toast(payload.emergencyFlag ? "Emergency flagged — scheduling halted" : "Intake recorded", payload.emergencyFlag ? "err" : "ok");
+    } catch (err) { toast("Submit failed: " + err.message, "err"); }
+  });
+
+  const startCallBtn = $("#startCallBtn");
+  if (startCallBtn) startCallBtn.addEventListener("click", async () => {
+    startCallBtn.disabled = true;
+    try {
+      const r = await api("/api/intake-cases/" + c.caseId + "/call-runs", { method: "POST" });
+      upsert(c.caseId, { callRunId: r.runId, callStatus: r.callRunStatus, callResult: r.result });
+      renderDetail();
+      toast("Call-E call placed — " + (OUTCOME_LABEL[r.result?.outcome] || r.callRunStatus), "ok");
+    } catch (err) { toast("Call failed: " + err.message, "err"); startCallBtn.disabled = false; }
+  });
+
+  const pollCallBtn = $("#pollCallBtn");
+  if (pollCallBtn) pollCallBtn.addEventListener("click", async () => {
+    try {
+      const r = await api("/api/intake-cases/" + c.caseId + "/call-runs/" + c.callRunId);
+      upsert(c.caseId, { callStatus: r.callRunStatus, callResult: r.result });
+      renderDetail(); toast("Call result: " + (OUTCOME_LABEL[r.result?.outcome] || r.callRunStatus), "info");
+    } catch (err) { toast("Check failed: " + err.message, "err"); }
+  });
+
+  const approveBtn = $("#approveBtn");
+  if (approveBtn) approveBtn.addEventListener("click", async () => {
+    approveBtn.disabled = true;
+    try {
+      const r = await api("/api/intake-cases/" + c.caseId + "/scheduling-approval", { method: "POST" });
+      upsert(c.caseId, { caseStatus: r.caseStatus });
+      await loadSlots(c.caseId);
+      renderCaseList(); renderDetail();
+      toast("Scheduling approved", "ok");
+    } catch (err) { toast("Approve failed: " + err.message, "err"); approveBtn.disabled = false; }
+  });
+
+  const loadSlotsBtn = $("#loadSlotsBtn");
+  if (loadSlotsBtn) loadSlotsBtn.addEventListener("click", async () => {
+    try { await loadSlots(c.caseId); renderDetail(); toast("Slots loaded", "info"); }
+    catch (err) { toast("Load failed: " + err.message, "err"); }
+  });
+
+  document.querySelectorAll('input[name="slotpick"]').forEach(r =>
+    r.addEventListener("change", () => {
+      const val = document.querySelector('input[name="slotpick"]:checked');
+      const v = val ? val.value : null;
+      document.querySelectorAll(".tt-slot").forEach(s =>
+        s.classList.toggle("selected", s.dataset.slot === v && !s.classList.contains("proposed")));
+    }));
+
+  const proposeBtn = $("#proposeBtn");
+  if (proposeBtn) proposeBtn.addEventListener("click", async () => {
+    const picked = document.querySelector('input[name="slotpick"]:checked');
+    if (!picked) { toast("Select a slot first", "err"); return; }
+    proposeBtn.disabled = true;
+    try {
+      await api("/api/intake-cases/" + c.caseId + "/slot-proposal", { method: "POST", body: JSON.stringify({ slotId: picked.value }) });
+      upsert(c.caseId, { proposedSlotId: picked.value });
+      renderDetail();
+      toast("Slot proposed for discussion", "ok");
+    } catch (err) { toast("Propose failed: " + err.message, "err"); proposeBtn.disabled = false; }
+  });
+
+  const verbal = $("#verbalConfirm"), confirmBtn = $("#confirmBtn");
+  if (verbal && confirmBtn) verbal.addEventListener("change", () => { confirmBtn.disabled = !verbal.checked; });
+  if (confirmBtn) confirmBtn.addEventListener("click", async () => {
+    confirmBtn.disabled = true;
+    try {
+      const a = await api("/api/intake-cases/" + c.caseId + "/appointment-confirmation", {
+        method: "POST", body: JSON.stringify({ slotId: c.proposedSlotId, confirmed: true }),
+      });
+      upsert(c.caseId, { appointment: a });
+      renderDetail();
+      toast("Appointment scheduled ✓", "ok");
+    } catch (err) { toast("Confirm failed: " + err.message, "err"); confirmBtn.disabled = false; }
+  });
+}
+
+async function loadSlots(caseId) {
+  const slots = await api("/api/intake-cases/" + caseId + "/available-slots");
+  upsert(caseId, { slots });
+}
+
+/* ============================================================
+   STAFF ALERTS
+   ============================================================ */
+async function loadAlerts() {
+  const box = $("#alertBox");
+  try {
+    const alerts = await api("/api/staff-alerts");
+    $("#alertCount").textContent = alerts.length;
+    { const _b = $("#bentoAlerts"); if (_b) _b.textContent = alerts.length; }
+    if (!alerts.length) { box.innerHTML = `<div class="empty" style="padding:6px 0">No active alerts.</div>`; return; }
+    box.innerHTML = alerts.map(a => `
+      <div class="alert-item" data-alert="${esc(a.alertId)}">
+        <div class="a-top">
+          <span>⚠️</span><span class="a-ref">${esc(a.patientReference)}</span>
+          <span class="a-time">${fmt(a.createdAt)}</span>
+        </div>
+        <div class="muted" style="font-size:11.5px;margin-top:3px">Scheduling halted · case ${esc(a.caseId.slice(0,8))}…</div>
+        <div class="actions" style="margin-top:9px">
+          <button class="btn sm" data-open>Record resolution</button>
+          <button class="btn sm" data-goto>Open case</button>
+        </div>
+        <form class="resolve-form stack">
+          <div class="field" style="margin:0">
+            <label>Resolution reason</label>
+            <select data-reason>
+              <option value="CARE_FOLLOW_UP_RECORDED">Care follow-up recorded</option>
+              <option value="REFERRED_TO_ANOTHER_FACILITY">Referred to another facility</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+          <div class="field" style="margin:0">
+            <label>Factual staff note</label>
+            <textarea data-note placeholder="Non-diagnostic note describing the follow-up taken." required></textarea>
+          </div>
+          <div class="hint" style="margin-top:-3px">Resolving does not lift the scheduling halt or verify any medical outcome.</div>
+          <button class="btn primary sm" type="submit">Save resolution</button>
+        </form>
+      </div>`).join("");
+
+    box.querySelectorAll(".alert-item").forEach(item => {
+      const id = item.dataset.alert;
+      item.querySelector("[data-open]").addEventListener("click", () => item.classList.toggle("expanded"));
+      const goto = item.querySelector("[data-goto]");
+      const caseId = alerts.find(x => x.alertId === id).caseId;
+      goto.addEventListener("click", () => {
+        if (store[caseId]) { selectedId = caseId; refreshSelected().then(() => { renderCaseList(); renderDetail(); }); }
+        else toast("That case isn't in this session's local list", "info");
+      });
+      item.querySelector(".resolve-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const reason = item.querySelector("[data-reason]").value;
+        const note = item.querySelector("[data-note]").value.trim();
+        if (!note) { toast("A staff note is required", "err"); return; }
+        try {
+          await api("/api/staff-alerts/" + id + "/resolution", { method: "POST", body: JSON.stringify({ reason, note }) });
+          toast("Alert resolved (" + (REASON_LABEL[reason]||reason) + ")", "ok");
+          loadAlerts();
+        } catch (err) { toast("Resolve failed: " + err.message, "err"); }
+      });
+    });
+  } catch (err) {
+    box.innerHTML = `<div class="empty" style="padding:6px 0">Could not load alerts.</div>`;
+    $("#alertCount").textContent = "—";
+    { const _b = $("#bentoAlerts"); if (_b) _b.textContent = "—"; }
+  }
+}
+
+/* ============================================================
+   3D TILT (pointer parallax on glass cards)
+   ============================================================ */
+let tiltReduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+function attachTilt() {
+  if (tiltReduced) return;
+  document.querySelectorAll(".tilt, .panel").forEach(el => {
+    if (el.__tilt) return; el.__tilt = true;
+    el.addEventListener("pointermove", (e) => {
+      const r = el.getBoundingClientRect();
+      const px = (e.clientX - r.left) / r.width - .5;
+      const py = (e.clientY - r.top) / r.height - .5;
+      el.style.transform = `perspective(900px) rotateY(${px * 5}deg) rotateX(${-py * 5}deg) translateZ(8px)`;
+    });
+    el.addEventListener("pointerleave", () => { el.style.transform = ""; });
+  });
+}
+
+/* ============================================================
+   THEME
+   ============================================================ */
+(function initTheme() {
+  let saved = null; try { saved = localStorage.getItem("previsit.theme"); } catch {}
+  if (saved) document.documentElement.setAttribute("data-theme", saved);
+  $("#themeBtn").addEventListener("click", () => {
+    const cur = document.documentElement.getAttribute("data-theme");
+    const isDark = cur === "dark" || (cur !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
+    const next = isDark ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    try { localStorage.setItem("previsit.theme", next); } catch {}
+    if (window.__scene3d) window.__scene3d.refreshTheme();
+  });
+})();
+
+/* ============================================================
+   BACKEND URL CONTROL
+   ============================================================ */
+function currentBaseLabel() {
+  const b = apiBase();
+  return b === "" ? location.origin : b;
+}
+(function initApiControl() {
+  // show a one-time banner when the page is opened as a local file
+  if (location.protocol === "file:") {
+    const banner = $("#fileBanner");
+    $("#fileBannerUrl").textContent = apiBase();
+    banner.hidden = false;
+    $("#fileBannerClose").addEventListener("click", () => { banner.hidden = true; });
+  }
+  $("#apiBtn").addEventListener("click", () => {
+    const cur = apiBase() || location.origin;
+    const next = prompt(
+      "Backend base URL for the API.\n\n" +
+      "Leave blank to use the page's own origin (when the backend serves this page).\n" +
+      "Example for a separately-run backend: http://localhost:8080",
+      cur);
+    if (next === null) return;
+    const trimmed = next.trim().replace(/\/+$/, "");
+    try {
+      if (trimmed === "") localStorage.removeItem(API_LS);
+      else localStorage.setItem(API_LS, trimmed);
+    } catch {}
+    if (location.protocol === "file:") { $("#fileBannerUrl").textContent = apiBase(); $("#fileBanner").hidden = false; }
+    toast("Backend set to " + (apiBase() || location.origin), "info");
+    checkHealth(); renderCaseList(); renderDetail(); loadAlerts();
+  });
+})();
+
+/* ============================================================
+   THREE.JS ANIMATED BACKDROP
+   ============================================================ */
+function init3D() {
+  const canvas = document.getElementById("bg3d");
+  if (!window.THREE || !canvas) return;
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+  const THREE = window.THREE;
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 100);
+  camera.position.z = 26;
+
+  function cssVar(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+  function sceneColors() {
+    const a = cssVar("--scene-a").split(",").map(Number);
+    const b = cssVar("--scene-b").split(",").map(Number);
+    return [ new THREE.Color(a[0]/255, a[1]/255, a[2]/255), new THREE.Color(b[0]/255, b[1]/255, b[2]/255) ];
+  }
+  let [colA, colB] = sceneColors();
+
+  // Floating glass icosahedrons (depth field)
+  const shapes = [];
+  const geoPool = [ new THREE.IcosahedronGeometry(1, 0), new THREE.OctahedronGeometry(1, 0), new THREE.TetrahedronGeometry(1, 0) ];
+  const N = innerWidth < 640 ? 9 : 16;
+  for (let i = 0; i < N; i++) {
+    const mat = new THREE.MeshStandardMaterial({
+      color: i % 2 ? colA : colB, transparent: true, opacity: 0.14,
+      roughness: 0.3, metalness: 0.1, flatShading: true, wireframe: i % 3 === 0,
+    });
+    const m = new THREE.Mesh(geoPool[i % geoPool.length], mat);
+    const s = 1 + Math.random() * 3;
+    m.scale.set(s, s, s);
+    m.position.set((Math.random() - .5) * 46, (Math.random() - .5) * 30, (Math.random() - .5) * 24 - 6);
+    m.userData = { rx: (Math.random() - .5) * .004, ry: (Math.random() - .5) * .004,
+      fx: Math.random() * Math.PI * 2, sp: .2 + Math.random() * .4, baseY: m.position.y };
+    scene.add(m); shapes.push(m);
+  }
+  // Particle dust
+  const pg = new THREE.BufferGeometry();
+  const pc = 240, arr = new Float32Array(pc * 3);
+  for (let i = 0; i < pc * 3; i++) arr[i] = (Math.random() - .5) * 60;
+  pg.setAttribute("position", new THREE.BufferAttribute(arr, 3));
+  const pMat = new THREE.PointsMaterial({ color: colB, size: .12, transparent: true, opacity: .5 });
+  const points = new THREE.Points(pg, pMat);
+  scene.add(points);
+
+  const key = new THREE.DirectionalLight(0xffffff, 1.1); key.position.set(5, 8, 10); scene.add(key);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+  const rim = new THREE.PointLight(colA.getHex(), 0.8, 80); rim.position.set(-12, -6, 12); scene.add(rim);
+
+  let mx = 0, my = 0, tx = 0, ty = 0;
+  addEventListener("pointermove", (e) => { tx = (e.clientX / innerWidth - .5); ty = (e.clientY / innerHeight - .5); }, { passive: true });
+
+  function resize() { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
+  addEventListener("resize", resize); resize();
+
+  let running = true;
+  document.addEventListener("visibilitychange", () => { running = !document.hidden; if (running) loop(); });
+
+  const clock = new THREE.Clock();
+  function loop() {
+    if (!running) return;
+    requestAnimationFrame(loop);
+    const t = clock.getElapsedTime();
+    mx += (tx - mx) * .04; my += (ty - my) * .04;
+    camera.position.x = mx * 6; camera.position.y = -my * 4; camera.lookAt(0, 0, 0);
+    shapes.forEach(m => { m.rotation.x += m.userData.rx; m.rotation.y += m.userData.ry;
+      m.position.y = m.userData.baseY + Math.sin(t * m.userData.sp + m.userData.fx) * 1.4; });
+    points.rotation.y = t * .02;
+    renderer.render(scene, camera);
+  }
+  loop();
+
+  window.__scene3d = { refreshTheme() {
+    [colA, colB] = sceneColors();
+    shapes.forEach((m, i) => m.material.color.copy(i % 2 ? colA : colB));
+    pMat.color.copy(colB); rim.color.copy(colA);
+  }};
+}
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+/* ============================================================
+   AUTHENTICATION (session-based login backed by SQLite)
+   ============================================================ */
+let _alertTimer = null;
+
+async function loadMe() {
+  try { return await api("/api/auth/me"); }
+  catch { return null; }
+}
+
+function showAuthError(sel, message) {
+  const el = $(sel);
+  if (!el) return;
+  el.textContent = message;
+  el.hidden = !message;
+}
+
+function initials(name) {
+  const parts = (name || "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
+}
+
+function showLogin() {
+  CURRENT_USER = null;
+  $("#authOverlay").hidden = false;
+  $("#userChip").hidden = true;
+  // clear any previous case view
+  selectedId = null;
+  store = {};
+  renderCaseList(); renderDetail();
+}
+
+function showApp(user) {
+  CURRENT_USER = user;
+  $("#authOverlay").hidden = true;
+  $("#userChip").hidden = false;
+  $("#userName").textContent = user.displayName || user.username;
+  $("#userAvatar").textContent = initials(user.displayName || user.username);
+  // Convenience: pre-fill the patient reference with the signed-in name.
+  const ref = $("#patientRef");
+  if (ref && !ref.value) ref.value = user.displayName || user.username;
+  // load this user's local case list and render
+  store = load();
+  renderCaseList(); renderDetail(); loadAlerts();
+  if (!_alertTimer) _alertTimer = setInterval(loadAlerts, 30000);
+}
+
+function initAuthUI() {
+  const tabLogin = $("#tabLogin"), tabRegister = $("#tabRegister");
+  const loginForm = $("#loginForm"), registerForm = $("#registerForm");
+  const otpForm = $("#otpForm");
+  const authTabs = document.querySelector(".auth-tabs");
+  let pendingUsername = null;
+  function selectTab(which) {
+    const login = which === "login";
+    otpForm.hidden = true;
+    if (authTabs) authTabs.hidden = false;
+    tabLogin.classList.toggle("active", login);
+    tabRegister.classList.toggle("active", !login);
+    loginForm.hidden = !login;
+    registerForm.hidden = login;
+    showAuthError("#loginError", ""); showAuthError("#registerError", ""); showAuthError("#otpError", "");
+  }
+  function startOtpStep(username, email, result) {
+    pendingUsername = username;
+    loginForm.hidden = true;
+    registerForm.hidden = true;
+    if (authTabs) authTabs.hidden = true;
+    otpForm.hidden = false;
+    $("#otpEmail").textContent = email || "your email";
+    $("#otpCode").value = "";
+    showAuthError("#otpError", "");
+    const dev = $("#otpDev");
+    if (result && result.emailSent === false && result.devOtp) {
+      dev.innerHTML = "Email not sent (no Resend key configured). Dev code: <b>" + esc(result.devOtp) + "</b>";
+      dev.hidden = false;
+    } else {
+      dev.hidden = true; dev.textContent = "";
+    }
+    setTimeout(() => { const c = $("#otpCode"); if (c) c.focus(); }, 60);
+  }
+  tabLogin.addEventListener("click", () => selectTab("login"));
+  tabRegister.addEventListener("click", () => selectTab("register"));
+
+  loginForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    showAuthError("#loginError", "");
+    const btn = loginForm.querySelector("button"); btn.disabled = true;
+    try {
+      const user = await api("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ username: $("#loginUser").value.trim(), password: $("#loginPass").value }),
+      });
+      $("#loginPass").value = "";
+      showApp(user);
+      toast("Welcome back, " + (user.displayName || user.username), "ok");
+    } catch (err) {
+      if (err.status === 403) {  // login blocked -> account still needs email verification
+        toast("Please verify your email to finish signing in.", "info");
+        const uname = $("#loginUser").value.trim();
+        try {
+          const r = await api("/api/auth/resend-otp", {
+            method: "POST",
+            body: JSON.stringify({ username: uname }),
+          });
+          startOtpStep(uname, r && r.email, r);
+        } catch (e2) {
+          startOtpStep(uname, null, null);
+        }
+      } else {
+        showAuthError("#loginError", err.message || "Sign in failed");
+      }
+    } finally { btn.disabled = false; }
+  });
+
+  registerForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    showAuthError("#registerError", "");
+    const btn = registerForm.querySelector("button"); btn.disabled = true;
+    const username = $("#regUser").value.trim();
+    try {
+      const result = await api("/api/auth/register", {
+        method: "POST",
+        body: JSON.stringify({
+          displayName: $("#regName").value.trim(),
+          username: username,
+          email: $("#regEmail").value.trim(),
+          phone: $("#regPhone").value.trim(),
+          password: $("#regPass").value,
+        }),
+      });
+      $("#regPass").value = "";
+      startOtpStep(username, result && result.email, result);
+      toast(result && result.emailSent
+        ? "Verification code sent to your email."
+        : "Account created — verify to continue.", "ok");
+    } catch (err) {
+      showAuthError("#registerError", err.message || "Could not create account");
+    } finally { btn.disabled = false; }
+  });
+
+  otpForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    showAuthError("#otpError", "");
+    const btn = otpForm.querySelector("button[type=submit]"); btn.disabled = true;
+    try {
+      const user = await api("/api/auth/verify-otp", {
+        method: "POST",
+        body: JSON.stringify({ username: pendingUsername, code: $("#otpCode").value.trim() }),
+      });
+      otpForm.hidden = true;
+      if (authTabs) authTabs.hidden = false;
+      showApp(user);
+      toast("Email verified — welcome, " + (user.displayName || user.username), "ok");
+    } catch (err) {
+      showAuthError("#otpError", err.message || "Verification failed");
+    } finally { btn.disabled = false; }
+  });
+
+  $("#otpResend").addEventListener("click", async () => {
+    if (!pendingUsername) return;
+    showAuthError("#otpError", "");
+    try {
+      const r = await api("/api/auth/resend-otp", {
+        method: "POST",
+        body: JSON.stringify({ username: pendingUsername }),
+      });
+      startOtpStep(pendingUsername, r && r.email, r);
+      toast(r && r.emailSent ? "A new code is on its way." : "A new code was generated.", "info");
+    } catch (err) {
+      showAuthError("#otpError", err.message || "Could not resend code");
+    }
+  });
+
+  $("#otpBack").addEventListener("click", () => selectTab("register"));
+
+  $("#logoutBtn").addEventListener("click", async () => {
+    try { await api("/api/auth/logout", { method: "POST" }); } catch {}
+    if (_alertTimer) { clearInterval(_alertTimer); _alertTimer = null; }
+    toast("Signed out", "info");
+    showLogin();
+  });
+}
+
+async function authInit() {
+  const me = await loadMe();
+  if (me) showApp(me); else showLogin();
+}
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+checkHealth();
+setInterval(checkHealth, 20000);
+attachTilt();
+window.addEventListener("load", init3D);
+initAuthUI();
+authInit();
+</script>
+</body>
+</html>
